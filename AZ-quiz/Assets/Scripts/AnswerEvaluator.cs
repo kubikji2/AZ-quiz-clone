@@ -58,12 +58,22 @@ public class AnswerEvaluator : MonoBehaviour
         DisableMyChildren();
     }
 
+    // answer evaluation layout is done here (messy I know)
     private void PrepareMyChildern()
     {
+        // screen resolution
+        Vector2 screen_size = new Vector2 (Screen.currentResolution.width, Screen.currentResolution.height);
+        
+        // adding callbacks
         yes_button.GetComponent<Button>().onClick.AddListener(AnswerCorrect);
+        yes_button.transform.position = screen_size + new Vector2(-100,-30);
         no_button.GetComponent<Button>().onClick.AddListener(AnswerIncorrect);
+        no_button.transform.position = screen_size + new Vector2(-100,-60);
 
         question.GetComponent<Text>().text = "Odpoveď týmu je: ";
+        question.transform.position = screen_size + new Vector2(-200,-45);
+
+        right_answer.transform.position = screen_size + new Vector2(-500,-45);
 
     }
 

@@ -235,7 +235,7 @@ public class GameManager : MonoBehaviour
 
             case EGameStates.EVALUATION:
                 // TODO show right answer in new window on the other screen if possible
-                AnswerEvaluator.Instance.ShowQuery("tmp right answer");
+                AnswerEvaluator.Instance.ShowQuery("<Zde bude správná odpoveď>");
                 // TODO dialog window determine whether team answered correctly
             break;
             
