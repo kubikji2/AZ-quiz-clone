@@ -18,4 +18,9 @@ public class BoardTile
         _button = button;
         this.label = label;
     }
+
+    public void UpdateButton()
+    {
+
+    }
 }
