@@ -93,11 +93,15 @@ public class GameManager : MonoBehaviour
         _game_state = EGameStates.CHOOSING;
     }
 
+    // generate game board
     private void InitBoard()
     {
         string arr = "";
         int cnt = 0;
         Vector2 screen_center = new Vector2 (Screen.currentResolution.width/2, Screen.currentResolution.height/2);
+
+        // creating board tiles grid
+        _game_board = new List<List<BoardTile>>();
 
         // creating game board holder to improve hearchy
         _game_board_holder = new GameObject("Game Board Holder");
@@ -105,6 +109,8 @@ public class GameManager : MonoBehaviour
         // Iterate over the game board
         for (int row = 0; row < 7; row++)
         {
+            List<BoardTile> row_tiles = new List<BoardTile>();
+
             float off = (row/2f)*35;
             float delta = 35;
             for (int i = 0; i <= row; i++)
@@ -123,7 +129,8 @@ public class GameManager : MonoBehaviour
                 Button current_button = current_button_go.GetComponent<Button>();
 
                 // board tile creation
-                BoardTile current_board_tile = new BoardTile(current_button, current_label);
+                BoardTile current_board_tile = new BoardTile(current_button, current_label, new Vector2Int(i, row));
+                row_tiles.Add(current_board_tile);
 
                 // based on:
                 // https://answers.unity.com/questions/1288510/buttononclickaddlistener-how-to-pass-parameter-or.html
@@ -138,11 +145,13 @@ public class GameManager : MonoBehaviour
 
             }   
             arr += "\n";
+            _game_board.Add(row_tiles);
         }
 
         Debug.Log(arr);
     }
 
+    // initialize score table, timers and other stuff
     private void InitScore()
     {
         // set first team to start
@@ -163,6 +172,7 @@ public class GameManager : MonoBehaviour
     }
 
 
+    // Button callback for the button in the grid
     private void OnBoardButtonClicked(BoardTile my_tile)
     {
         if(_game_state == EGameStates.CHOOSING && (my_tile.state == BoardTile.EBoardTileState.NONE || my_tile.state == BoardTile.EBoardTileState.SHOTOUT))
@@ -175,7 +185,7 @@ public class GameManager : MonoBehaviour
 
     }
 
-    // Update is called once per frame
+    // just check for key start
     void Update()
     {
         if(_game_state == EGameStates.READING)
@@ -193,6 +203,8 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Tick a timer
+    // TODO replace with a clock like stuff?
     private IEnumerator Timer(int remains) {
         
         _timer_instance.SetActive(true);
@@ -205,8 +217,9 @@ public class GameManager : MonoBehaviour
         {
             StartCoroutine(Timer(remains-1));
         } else {
-            // disables
+            // disables timer
             _timer_instance.SetActive(false);
+
             // set new game state
             SetGameState(EGameStates.EVALUATION);
         }
@@ -214,9 +227,11 @@ public class GameManager : MonoBehaviour
 
     public void LastAnswerWas(bool correctness)
     {
+        bool is_there_winner = false;
         if(correctness)
         {
             _current_tile.state = _is_first_team_playing ? BoardTile.EBoardTileState.PLAYER1 : BoardTile.EBoardTileState.PLAYER2;
+            is_there_winner = CheckWinner( _is_first_team_playing ? BoardTile.EBoardTileState.PLAYER1 : BoardTile.EBoardTileState.PLAYER2);
         } else {
             _current_tile.state = BoardTile.EBoardTileState.SHOTOUT;
         }   
@@ -226,20 +241,24 @@ public class GameManager : MonoBehaviour
         // propagate playing teams
         _current_tile.UpdateButton(team1, team2, shot_out_color);
 
+        // TODO handle case when there is a winner
+        Debug.Log("[GAME MANAGER] " + is_there_winner);
+
         // start new round
         SetGameState(EGameStates.CHOOSING);
 
     }
 
+
+    // 
     private void SetGameState(EGameStates new_game_state)
     {
         switch (new_game_state)
         {
             case EGameStates.CHOOSING:
+                // switch team
                 _is_first_team_playing = !_is_first_team_playing;
                 _game_state = new_game_state;
-            // TODO check board
-            // TODO switch team
             break;
 
             case EGameStates.READING:
@@ -269,5 +288,83 @@ public class GameManager : MonoBehaviour
             break;
         }
     }
+
+    
+    // BFS on BF hex grid
+    bool CheckWinner(BoardTile.EBoardTileState team)
+    {
+        // winning condition
+        bool left = false;
+        bool bottom = false;
+        bool diagonal = false;
+
+        Queue<BoardTile> open = new Queue<BoardTile>();
+        List<BoardTile> closed = new List<BoardTile>();
+
+        open.Enqueue(_current_tile);
+        
+        while(open.Count > 0)
+        {
+            BoardTile cur = open.Dequeue();
+            // processing current tile
+            left = cur.position_in_grid.x == 0 ? true : left;
+            bottom = cur.position_in_grid.y == 6 ? true : bottom;
+            diagonal = cur.position_in_grid.x == cur.position_in_grid.y ? true : diagonal;
+            
+            // check for winning condition
+            if (left && bottom && diagonal)
+            {
+                return true;
+            }
+
+            // closing current tile
+            closed.Add(cur);
+            
+            // processing neighbors
+            List<BoardTile> neighs = GetNeighbors(cur.position_in_grid);
+            foreach (BoardTile neigh in neighs)
+            {
+                if(!closed.Contains(neigh) && neigh.state == team)
+                {
+                    open.Enqueue(neigh);
+                }
+            }
+
+        }
+
+        //Debug.Log("left " + left + " bottom " + bottom + " diagonal " + diagonal);
+
+        return false;
+
+    }
+
+    // expand given node
+    private List<BoardTile> GetNeighbors(Vector2Int position)
+    {
+        List<BoardTile> neighs = new List<BoardTile>();
+        
+        List<Vector2Int> d_pos = new List<Vector2Int> {new Vector2Int(-1,-1), new Vector2Int(0,-1), new Vector2Int(-1,0), new Vector2Int(1,0), new Vector2Int(0,1), new Vector2Int(1,1)};
+        foreach (Vector2Int dp in d_pos)
+        {
+            Vector2Int neigh_pos = position + dp;
+            if(CheckBounds(neigh_pos))
+            {
+                // index order swapped contraintuitively
+                neighs.Add(_game_board[neigh_pos.y][neigh_pos.x]);
+            }
+        }
+
+        return neighs;
+    }
+
+    // check whether given position is within bounds
+    private bool CheckBounds(Vector2Int position)
+    {
+        int x = position.x;
+        int y = position.y;
+        return x >= 0 && y >= 0 && x <= y && y < 7;
+
+    }
+
 
 }

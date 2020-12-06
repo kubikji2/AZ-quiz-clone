@@ -13,10 +13,13 @@ public class BoardTile
 
     public string label;
 
-    public BoardTile(Button button, string label)
+    public Vector2Int position_in_grid;
+
+    public BoardTile(Button button, string label, Vector2Int position_in_grid)
     {
         _button = button;
         this.label = label;
+        this.position_in_grid = position_in_grid;
     }
 
     // color setting based on:
@@ -58,5 +61,25 @@ public class BoardTile
         _button.interactable = !(state == EBoardTileState.PLAYER1 || state == EBoardTileState.PLAYER2);
         
         _button.colors = colors;
+    }
+
+    public static bool operator ==(BoardTile lhs, BoardTile rhs)
+    {
+        return string.Compare(lhs.label,rhs.label) == 0;
+    }
+
+    public static bool operator !=(BoardTile lhs, BoardTile rhs)
+    {
+        return string.Compare(lhs.label,rhs.label) != 0;
+    }
+
+    public override bool Equals(object obj)
+    {
+        return base.Equals(obj);
+    }
+
+    public override int GetHashCode()
+    {
+        return base.GetHashCode();
     }
 }
