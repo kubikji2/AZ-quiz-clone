@@ -56,9 +56,9 @@ public class GameManager : MonoBehaviour
     
     private GameObject _timer_instance;
 
-
-
-    // game board related part
+    /*********************
+    * game board related *
+    *********************/
     public Canvas game_canvas;
 
     private List<List<BoardTile>> _game_board;
@@ -73,6 +73,16 @@ public class GameManager : MonoBehaviour
     // currently selected tile
     private BoardTile _current_tile;
 
+    /***************
+    * team related *
+    ***************/
+
+    public Team team1;
+
+    public Team team2;
+
+    public Color shot_out_color;
+
     private bool _is_first_team_playing;
 
     // Start is called before the first frame update
@@ -80,6 +90,7 @@ public class GameManager : MonoBehaviour
     {
         InitBoard();
         InitScore();
+        _game_state = EGameStates.CHOOSING;
     }
 
     private void InitBoard()
@@ -154,10 +165,13 @@ public class GameManager : MonoBehaviour
 
     private void OnBoardButtonClicked(BoardTile my_tile)
     {
-        Debug.Log("clicked on " + my_tile.label);
-        // save button
-        _current_tile = my_tile;
-        SetGameState(EGameStates.READING);
+        if(_game_state == EGameStates.CHOOSING && (my_tile.state == BoardTile.EBoardTileState.NONE || my_tile.state == BoardTile.EBoardTileState.SHOTOUT))
+        {
+            Debug.Log("clicked on " + my_tile.label);
+            // save button
+            _current_tile = my_tile;
+            SetGameState(EGameStates.READING);
+        }
 
     }
 
@@ -166,10 +180,16 @@ public class GameManager : MonoBehaviour
     {
         if(_game_state == EGameStates.READING)
         {
-            if(Input.GetKeyDown(KeyCode.Space))
+            if(Input.GetKeyDown(KeyCode.S))
             {
                 SetGameState(EGameStates.ANSWERING);
             }
+        }
+        
+        // debug
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            Debug.Log("[GAME MANAGER] " + _is_first_team_playing + ", GAMESTATE " + _game_state);
         }
     }
 
@@ -201,8 +221,10 @@ public class GameManager : MonoBehaviour
             _current_tile.state = BoardTile.EBoardTileState.SHOTOUT;
         }   
 
-        // TODO add teams playing
-        _current_tile.UpdateButton();
+        Debug.Log(_current_tile.label + " " + _current_tile.state);
+
+        // propagate playing teams
+        _current_tile.UpdateButton(team1, team2, shot_out_color);
 
         // start new round
         SetGameState(EGameStates.CHOOSING);
@@ -214,6 +236,8 @@ public class GameManager : MonoBehaviour
         switch (new_game_state)
         {
             case EGameStates.CHOOSING:
+                _is_first_team_playing = !_is_first_team_playing;
+                _game_state = new_game_state;
             // TODO check board
             // TODO switch team
             break;
@@ -234,6 +258,7 @@ public class GameManager : MonoBehaviour
             break;
 
             case EGameStates.EVALUATION:
+                _game_state = new_game_state;
                 // TODO show right answer in new window on the other screen if possible
                 AnswerEvaluator.Instance.ShowQuery("<Zde bude správná odpoveď>");
                 // TODO dialog window determine whether team answered correctly
